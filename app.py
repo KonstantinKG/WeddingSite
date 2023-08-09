@@ -1,15 +1,13 @@
-import os
 import traceback
 
-from flask_cors import CORS
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from google.oauth2 import service_account
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.errors import HttpError
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+SCOPE_WRITE = ['https://www.googleapis.com/auth/spreadsheets']
 SERVICE_ACCOUNT_FILE = 'credentials.json'
 
 app = Flask(__name__)
@@ -19,13 +17,25 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 @app.route('/', methods=['POST'])
 def add_data_to_google_sheets():
     try:
+        data = request.get_json()
+
         credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         service = build('sheets', 'v4', credentials=credentials)
-        spreadsheet_id = 'base'
-        values = [request.form.getlist('data')]
-        body = {'values': values}
 
-        result = service.spreadsheets().values().append(spreadsheetId=spreadsheet_id, range='A1', valueInputOption='RAW', body=body).execute()
+        spreadsheet_id = "1TAI7mPmJcy2DyeXu7A4kiUhJLdG453pzf0-BEs-aypw"
+
+        body = {
+            "values": [[data["username"], data["value"]]]
+        }
+
+        response = service.spreadsheets().values().append(
+            spreadsheetId=spreadsheet_id,
+            range='Sheet1',
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body=body
+        ).execute()
+        print(response)
         return jsonify({"status": True})
     except Exception as e:
         print(e, traceback.format_exc())
