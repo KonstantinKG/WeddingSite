@@ -1,14 +1,21 @@
+import json
 import traceback
 
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_cors import CORS
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+
+from helpers.logger import Logger
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 SCOPE_WRITE = ['https://www.googleapis.com/auth/spreadsheets']
 SERVICE_ACCOUNT_FILE = 'credentials.json'
+
+with open("config.json", 'r', encoding='utf-8') as file:
+    config = json.loads(file.read())
+
+logger = Logger().get_logger(name=config["source"])
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -18,6 +25,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 def add_data_to_google_sheets():
     try:
         data = request.get_json()
+        logger.info(f"Writing info to excel file: {data['username']} { data['value']}")
 
         credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
         service = build('sheets', 'v4', credentials=credentials)
@@ -28,19 +36,18 @@ def add_data_to_google_sheets():
             "values": [[data["username"], data["value"]]]
         }
 
-        response = service.spreadsheets().values().append(
+        service.spreadsheets().values().append(
             spreadsheetId=spreadsheet_id,
             range='Sheet1',
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
             body=body
         ).execute()
-        print(response)
-        return jsonify({"status": True})
+        return app.response_class(status=200)
     except Exception as e:
-        print(e, traceback.format_exc())
-        return jsonify({"status": False})
+        logger.error(f"Failed to write data to excel error occurred {e}\nTRACEBACK {traceback.format_exc()}")
+        return app.response_class(status=500)
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host=config['host'], port=config['port'])
