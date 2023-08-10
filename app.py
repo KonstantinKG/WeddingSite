@@ -1,7 +1,7 @@
 import json
 import traceback
 
-from flask import Flask, request
+from flask import Flask, request, render_template
 from flask_cors import CORS
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -19,6 +19,11 @@ logger = Logger().get_logger(name=config["source"])
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
+
+@app.route('/', methods=["GET"])
+def index():
+    return render_template("index.html")
 
 
 @app.route('/', methods=['POST'])
